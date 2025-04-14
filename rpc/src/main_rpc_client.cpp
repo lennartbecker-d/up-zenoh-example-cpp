@@ -70,7 +70,9 @@ void OnReceive(uprotocol::communication::RpcClient::MessageOrStatus expected) {
 	// sequence number, current time, and random value
 	spdlog::debug("(Client) Received message: {}", message.DebugString());
 
-	const auto* pdata = reinterpret_cast<const uint64_t*>(message.payload().data());
+	std::vector<uint64_t> pdata(3);
+	size_t expected_size = 3 * sizeof(uint64_t);
+	std::memcpy(pdata.data(), message.payload().data(), expected_size);
 	spdlog::info("Received payload: {} - {}, {}", pdata[0], pdata[1], pdata[2]);
 }
 

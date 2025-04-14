@@ -33,7 +33,6 @@
 #include "UTransportDomainSockets.h"
 #include "common.h"
 
-using namespace uprotocol::communication;
 using namespace uprotocol::v1;
 
 bool g_terminate = false;
@@ -91,10 +90,10 @@ int main(int argc, char** argv) {
 	auto transport = std::make_shared<UTransportDomainSockets>(source);
 
 	auto res_time =
-	    Subscriber::subscribe(transport, topic_time, onReceiveTime);
-	auto res_random = Subscriber::subscribe(transport, topic_random,
+	    uprotocol::communication::Subscriber::subscribe(transport, topic_time, onReceiveTime);
+	auto res_random = uprotocol::communication::Subscriber::subscribe(transport, topic_random,
 	                                       onReceiveRandom);
-	auto res_counter = Subscriber::subscribe(transport, topic_counter,
+	auto res_counter = uprotocol::communication::Subscriber::subscribe(transport, topic_counter,
 	                                        onReceiveCounter);
 
 	while (!g_terminate) {

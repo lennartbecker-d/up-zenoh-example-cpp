@@ -76,7 +76,7 @@ v1::UStatus UTransportDomainSockets::sendImpl(const v1::UMessage& message) {
 		}
 
 		spdlog::info("Waiting for client connection\n");
-		fdClient_ = accept(fdSocket_, NULL, NULL);
+		fdClient_ = accept(fdSocket_, nullptr, nullptr);
 		if (fdClient_ == -1) {
 			spdlog::error("Error on accept call.  Errno={}\n", errno);
 			return retval;
