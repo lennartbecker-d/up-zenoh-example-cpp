@@ -27,21 +27,21 @@
 
 #include <chrono>
 #include <csignal>
+#include <cstdint>
 #include <iostream>
+#include <random>
 
 #include "SocketUTransport.h"
 #include "common.h"
 
 using namespace uprotocol::v1;
-using namespace uprotocol::communication;
-using namespace uprotocol::datamodel::builder;
 
-bool gTerminate = false;
+bool g_terminate = false;
 
 void signalHandler(int signal) {
 	if (signal == SIGINT) {
 		std::cout << "Ctrl+C received. Exiting..." << std::endl;
-		gTerminate = true;
+		g_terminate = true;
 	}
 }
 
@@ -63,16 +63,19 @@ std::optional<uprotocol::datamodel::builder::Payload> OnReceive(
 
 	// Received request with empty payload, generate response with
 	// sequence number, current time, and random value
-	static uint64_t seqNum = 0;
-	uint64_t randVal = std::rand();
-	uint64_t timeVal = std::chrono::duration_cast<std::chrono::milliseconds>(
+	static uint64_t seq_num = 0;
+	std::random_device rd;
+    std::mt19937_64 gen(rd());
+    std::uniform_int_distribution<uint64_t> distribution(0, UINT64_MAX);
+    uint64_t rand_val = distribution(gen);
+	uint64_t time_val = std::chrono::duration_cast<std::chrono::milliseconds>(
 	                       std::chrono::system_clock::now().time_since_epoch())
 	                       .count();
-	std::vector<uint64_t> payload_data = {seqNum++, timeVal, randVal};
+	std::vector<uint64_t> payload_data = {seq_num++, time_val, rand_val};
 
 	spdlog::debug("(Server) Received request:\n{}", message.DebugString());
 
-	Payload payload(reinterpret_cast<std::vector<uint8_t>&>(payload_data),
+	uprotocol::datamodel::builder::Payload payload(reinterpret_cast<std::vector<uint8_t>&>(payload_data),
 	                UPayloadFormat::UPAYLOAD_FORMAT_RAW);
 	spdlog::info("Sending payload:  {} - {}, {}", payload_data[0],
 	             payload_data[1], payload_data[2]);
@@ -87,12 +90,12 @@ int main(int argc, char** argv) {
 	(void)argc;
 	(void)argv;
 
-	signal(SIGINT, signalHandler);
+	(void)signal(SIGINT, signalHandler);
 
 	UUri source = getRpcUUri(0);
 	UUri method = getRpcUUri(12);
 	auto transport = std::make_shared<SocketUTransport>(source);
-	auto server = RpcServer::create(transport, method, OnReceive);
+	auto server = uprotocol::communication::RpcServer::create(transport, method, OnReceive);
 
 	if (!server.has_value()) {
 		spdlog::error("Failed to create RPC server: {}",
@@ -100,7 +103,7 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
-	while (!gTerminate) {
+	while (!g_terminate) {
 		sleep(1);
 	}
 

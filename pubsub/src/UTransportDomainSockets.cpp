@@ -22,12 +22,12 @@
 UTransportDomainSockets::UTransportDomainSockets(const v1::UUri& uuri)
     : transport::UTransport(uuri),
       send_count_(0),
-      fdClient_(-1),
+      fdSocket_(socket(AF_UNIX, SOCK_STREAM, 0)), fdClient_(-1),
       stopFlag_(false) {
 	socketPath_ = std::filesystem::canonical("/proc/self/exe")
 	                  .parent_path()
 	                  .append(uuri.authority_name());
-	fdSocket_ = socket(AF_UNIX, SOCK_STREAM, 0);
+	
 	if (fdSocket_ == -1) {
 		spdlog::error("Error on socket creation\n");
 	}
@@ -58,19 +58,19 @@ v1::UStatus UTransportDomainSockets::sendImpl(const v1::UMessage& message) {
 	if (fdClient_ == -1) {
 		// Bind the socket, and await client connection
 		int len = 0;
-		struct sockaddr_un local;
-		int nIncomingConnections = 1;
+		struct sockaddr_un local{};
+		int n_incoming_connections = 1;
 
 		local.sun_family = AF_UNIX;
 		strcpy(local.sun_path, socketPath_.c_str());
 		unlink(local.sun_path);
 		len = strlen(local.sun_path) + sizeof(local.sun_family);
-		if (bind(fdSocket_, (struct sockaddr*)&local, len) != 0) {
+		if (bind(fdSocket_, reinterpret_cast<struct sockaddr*>(&local), len) != 0) {
 			spdlog::error("Error on binding socket.  Errno={}\n", errno);
 			return retval;
 		}
 
-		if (listen(fdSocket_, nIncomingConnections) != 0) {
+		if (listen(fdSocket_, n_incoming_connections) != 0) {
 			spdlog::error("Error on listen call.  Errno={}\n", errno);
 			return retval;
 		}
@@ -84,23 +84,23 @@ v1::UStatus UTransportDomainSockets::sendImpl(const v1::UMessage& message) {
 	}
 
 	// serialize the message
-	size_t serializedSize = message.ByteSizeLong();
-	std::string serializedMessage(serializedSize, 0);
+	size_t serialized_size = message.ByteSizeLong();
+	std::string serialized_message(serialized_size, 0);
 	bool success =
-	    message.SerializeToArray(serializedMessage.data(), serializedSize);
+	    message.SerializeToArray(serialized_message.data(), static_cast<int>(serialized_size));
 	spdlog::debug("Serialized message size: {} ; Serialized data: {}",
-	              serializedSize, serializedMessage);
+	              serialized_size, serialized_message);
 
 	// Send the serialized UMessage
 	spdlog::debug("Sending message number {}", send_count_.load());
 
 	// send length of serialized message
-	if (::send(fdClient_, &serializedSize, sizeof(serializedSize), 0) == -1) {
+	if (::send(fdClient_, &serialized_size, sizeof(serialized_size), 0) == -1) {
 		spdlog::error("Error sending message size.  Errno={}\n", errno);
 		return retval;
 	}
 	// send serialized message
-	if (::send(fdClient_, serializedMessage.data(), serializedSize, 0) == -1) {
+	if (::send(fdClient_, serialized_message.data(), serialized_size, 0) == -1) {
 		spdlog::error("Error sending serialized data.  Errno={}\n", errno);
 		return retval;
 	}
@@ -140,10 +140,10 @@ v1::UStatus UTransportDomainSockets::registerListenerImpl(
 
 void UTransportDomainSockets::listenThread() {
 	while (!stopFlag_) {
-		int data_len;
-		int connected;
-		struct sockaddr_un addr;
-		size_t serializedSize;
+		int data_len = 0;
+		int connected = 0;
+		struct sockaddr_un addr{};
+		size_t serialized_size = 0;
 
 		addr.sun_family = AF_UNIX;
 		strcpy(addr.sun_path, socketPath_.c_str());
@@ -151,7 +151,7 @@ void UTransportDomainSockets::listenThread() {
 
 		spdlog::info("Client: Trying to connect...");
 		if ((connected =
-		         connect(fdSocket_, (struct sockaddr*)&addr, data_len)) == -1) {
+		         connect(fdSocket_, reinterpret_cast<struct sockaddr*>(&addr), data_len)) == -1) {
 			spdlog::info("Client: Error on connect call.  Errno = {}", errno);
 			sleep(1);
 		} else {
@@ -159,10 +159,10 @@ void UTransportDomainSockets::listenThread() {
 		}
 
 		while (!stopFlag_ && (connected != -1)) {
-			v1::UMessage receivedMessage;
+			v1::UMessage received_message;
 
 			// receive length of serialized message
-			if (recv(fdSocket_, &serializedSize, sizeof(serializedSize), 0) ==
+			if (recv(fdSocket_, &serialized_size, sizeof(serialized_size), 0) ==
 			    -1) {
 				spdlog::error("Error receiving message size.  Errno={}\n",
 				              errno);
@@ -170,22 +170,22 @@ void UTransportDomainSockets::listenThread() {
 			}
 
 			// receive serialized message
-			std::string serializedMessage(serializedSize, 0);
-			if (recv(fdSocket_, serializedMessage.data(), serializedSize, 0) ==
+			std::string serialized_message(serialized_size, 0);
+			if (recv(fdSocket_, serialized_message.data(), serialized_size, 0) ==
 			    -1) {
 				spdlog::error("Error receiving serialized data.  Errno={}\n",
 				              errno);
 				break;
 			}
 
-			if (!receivedMessage.ParseFromString(serializedMessage)) {
+			if (!received_message.ParseFromString(serialized_message)) {
 				spdlog::error("Failed to parse received message");
 				break;
-			} else {
-				spdlog::debug("Received message number {}", send_count_.load());
-				send_count_++;
-				notifyListener(receivedMessage);
-			}
+			}   
+			spdlog::debug("Received message number {}", send_count_.load());
+			send_count_++;
+			notifyListener(received_message);
+		
 		}
 	}
 }

@@ -36,18 +36,18 @@ using namespace uprotocol::v1;
 using namespace uprotocol::communication;
 using namespace uprotocol::datamodel::builder;
 
-bool gTerminate = false;
+bool g_terminate = false;
 
 void signalHandler(int signal) {
 	if (signal == SIGINT) {
 		std::cout << "Ctrl+C received. Exiting..." << std::endl;
-		gTerminate = true;
+		g_terminate = true;
 	}
 }
 
 void OnReceive(RpcClient::MessageOrStatus expected) {
 	if (!expected.has_value()) {
-		UStatus status = expected.error();
+		const UStatus& status = expected.error();
 		spdlog::error("Expected value not found. -- Status: {}",
 		              status.DebugString());
 		return;
@@ -83,7 +83,7 @@ int main(int argc, char** argv) {
 	(void)argc;
 	(void)argv;
 
-	signal(SIGINT, signalHandler);
+	(void)signal(SIGINT, signalHandler);
 
 	UUri source = getRpcUUri(0);
 	UUri method = getRpcUUri(12);
@@ -93,7 +93,7 @@ int main(int argc, char** argv) {
 	              std::chrono::milliseconds(500));
 	RpcClient::InvokeHandle handle;
 
-	while (!gTerminate) {
+	while (!g_terminate) {
 		handle = client.invokeMethod(OnReceive);
 		sleep(1);
 	}

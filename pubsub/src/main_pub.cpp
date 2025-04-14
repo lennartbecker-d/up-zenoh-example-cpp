@@ -36,8 +36,7 @@
 #include "UTransportDomainSockets.h"
 #include "common.h"
 
-namespace Builder = uprotocol::datamodel::builder;
-namespace uprotocol::v1{
+using namespace uprotocol::v1;
 
 bool g_terminate = false;
 
@@ -98,7 +97,7 @@ int main(int argc, char** argv) {
 		// send a string with a time value (ie "15665489")
 		uint64_t time_val = getTime();
 		spdlog::info("sending time = {}", time_val);
-		Builder::Payload string_time(std::to_string(time_val),
+		uprotocol::datamodel::builder::Payload string_time(std::to_string(time_val),
 		                    UPayloadFormat::UPAYLOAD_FORMAT_TEXT);
 		status = publish_time.publish(std::move(string_time));
 		if (status.code() != UCode::OK) {
@@ -108,7 +107,7 @@ int main(int argc, char** argv) {
 
 		int32_t rand_val = getRandom();
 		spdlog::info("sending random = {}", rand_val);
-		Builder::Payload random_payload(std::to_string(rand_val),
+		uprotocol::datamodel::builder::Payload random_payload(std::to_string(rand_val),
 		                       UPayloadFormat::UPAYLOAD_FORMAT_TEXT);
 		status = publish_random.publish(std::move(random_payload));
 		if (status.code() != UCode::OK) {
@@ -118,7 +117,7 @@ int main(int argc, char** argv) {
 
 		uint8_t counter_val = getCounter();
 		spdlog::info("sending counter = {}", counter_val);
-		Builder::Payload counter_payload(std::to_string(counter_val),
+		uprotocol::datamodel::builder::Payload counter_payload(std::to_string(counter_val),
 		                        UPayloadFormat::UPAYLOAD_FORMAT_TEXT);
 		status = publish_counter.publish(std::move(counter_payload));
 		if (status.code() != UCode::OK) {
@@ -129,6 +128,5 @@ int main(int argc, char** argv) {
 		sleep(1);
 	}
 
-	return 0; 
-} 
-} // namespace uprotocol::v1
+	return 0;
+}

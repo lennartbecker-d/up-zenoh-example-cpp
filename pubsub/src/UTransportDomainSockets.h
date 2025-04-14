@@ -22,7 +22,7 @@ using namespace uprotocol;
 class UTransportDomainSockets : public transport::UTransport {
 public:
 	explicit UTransportDomainSockets(const v1::UUri& uuri);
-	virtual ~UTransportDomainSockets();
+	~UTransportDomainSockets() override;
 
 private:
 	int fdSocket_;  // socket handle
@@ -44,5 +44,6 @@ private:
 	void listenThread();  // listen for incoming messages (thread)
 	void cleanupListener(CallableConn listener) override {}
 };  // class UTransportDomainSockets
+// } // namespace uprotocol
 
 #endif  // UTRANSPORT_DOMAIN_SOCKETS_H
