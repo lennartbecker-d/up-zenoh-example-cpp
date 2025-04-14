@@ -57,14 +57,14 @@ v1::UStatus UTransportDomainSockets::sendImpl(const v1::UMessage& message) {
 
 	if (fdClient_ == -1) {
 		// Bind the socket, and await client connection
-		int len = 0;
+		std::size_t len = 0;
 		struct sockaddr_un local{};
 		int n_incoming_connections = 1;
 
 		local.sun_family = AF_UNIX;
-		strcpy(local.sun_path, socketPath_.c_str());
-		unlink(local.sun_path);
-		len = strlen(local.sun_path) + sizeof(local.sun_family);
+		strcpy(static_cast<char*>(local.sun_path), socketPath_.c_str());
+		unlink(static_cast<const char*>(local.sun_path));
+		len = strlen(static_cast<char*>(local.sun_path)) + sizeof(local.sun_family);
 		if (bind(fdSocket_, reinterpret_cast<struct sockaddr*>(&local), len) != 0) {
 			spdlog::error("Error on binding socket.  Errno={}\n", errno);
 			return retval;
@@ -113,8 +113,8 @@ v1::UStatus UTransportDomainSockets::sendImpl(const v1::UMessage& message) {
 v1::UStatus UTransportDomainSockets::registerListenerImpl(
     CallableConn&& listener, const v1::UUri& source_filter /* topic */,
     std::optional<v1::UUri>&& sink_filter) {
+	(void)std::move(sink_filter);
 	v1::UStatus retval;
-
 	// Start the listener thread (if not already started)
 	if (!listener_thread_.joinable()) {
 		listener_thread_ =
@@ -132,7 +132,7 @@ v1::UStatus UTransportDomainSockets::registerListenerImpl(
 	size_t hash = std::hash<std::string>{}(
 	    uprotocol::datamodel::serializer::uri::AsString::serialize(
 	        source_filter));
-	cbListeners_[hash] = listener;
+	cbListeners_[hash] = std::move(listener);
 
 	retval.set_code(v1::UCode::OK);
 	return retval;
@@ -140,18 +140,19 @@ v1::UStatus UTransportDomainSockets::registerListenerImpl(
 
 void UTransportDomainSockets::listenThread() {
 	while (!stopFlag_) {
-		int data_len = 0;
+		std::size_t data_len = 0;
 		int connected = 0;
 		struct sockaddr_un addr{};
 		size_t serialized_size = 0;
 
 		addr.sun_family = AF_UNIX;
-		strcpy(addr.sun_path, socketPath_.c_str());
-		data_len = strlen(addr.sun_path) + sizeof(addr.sun_family);
+		strcpy(static_cast<char*>(addr.sun_path), socketPath_.c_str());
+		data_len = strlen(static_cast<char*>(addr.sun_path)) + sizeof(addr.sun_family);
 
 		spdlog::info("Client: Trying to connect...");
-		if ((connected =
-		         connect(fdSocket_, reinterpret_cast<struct sockaddr*>(&addr), data_len)) == -1) {
+		
+		connected = connect(fdSocket_, reinterpret_cast<struct sockaddr*>(&addr), data_len);
+		if (connect(fdSocket_, reinterpret_cast<struct sockaddr*>(&addr), data_len) == -1) {
 			spdlog::info("Client: Error on connect call.  Errno = {}", errno);
 			sleep(1);
 		} else {
