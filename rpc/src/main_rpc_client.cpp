@@ -33,8 +33,6 @@
 #include "common.h"
 
 using namespace uprotocol::v1;
-using namespace uprotocol::communication;
-using namespace uprotocol::datamodel::builder;
 
 bool g_terminate = false;
 
@@ -45,7 +43,7 @@ void signalHandler(int signal) {
 	}
 }
 
-void OnReceive(RpcClient::MessageOrStatus expected) {
+void OnReceive(uprotocol::communication::RpcClient::MessageOrStatus expected) {
 	if (!expected.has_value()) {
 		const UStatus& status = expected.error();
 		spdlog::error("Expected value not found. -- Status: {}",
@@ -72,7 +70,7 @@ void OnReceive(RpcClient::MessageOrStatus expected) {
 	// sequence number, current time, and random value
 	spdlog::debug("(Client) Received message: {}", message.DebugString());
 
-	const uint64_t* pdata = (uint64_t*)message.payload().data();
+	const auto* pdata = reinterpret_cast<const uint64_t*>(message.payload().data());
 	spdlog::info("Received payload: {} - {}, {}", pdata[0], pdata[1], pdata[2]);
 }
 
@@ -89,9 +87,9 @@ int main(int argc, char** argv) {
 	UUri method = getRpcUUri(12);
 	auto transport = std::make_shared<SocketUTransport>(source);
 	auto client =
-	    RpcClient(transport, std::move(method), UPriority::UPRIORITY_CS4,
+	    uprotocol::communication::RpcClient(transport, std::move(method), UPriority::UPRIORITY_CS4,
 	              std::chrono::milliseconds(500));
-	RpcClient::InvokeHandle handle;
+	uprotocol::communication::RpcClient::InvokeHandle handle;
 
 	while (!g_terminate) {
 		handle = client.invokeMethod(OnReceive);
