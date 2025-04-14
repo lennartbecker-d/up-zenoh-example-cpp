@@ -33,15 +33,14 @@
 #include "UTransportDomainSockets.h"
 #include "common.h"
 
-using namespace uprotocol::communication;
-using namespace uprotocol::v1;
+namespace uprotocol::v1{
 
-bool gTerminate = false;
+bool g_terminate = false;
 
 void signalHandler(int signal) {
 	if (signal == SIGINT) {
 		std::cout << "Ctrl+C received. Exiting..." << std::endl;
-		gTerminate = true;
+		g_terminate = true;
 	}
 }
 
@@ -80,26 +79,27 @@ int main(int argc, char** argv) {
 	(void)argc;
 	(void)argv;
 
-	signal(SIGINT, signalHandler);
-	signal(SIGPIPE, signalHandler);
+	(void)signal(SIGINT, signalHandler);
+	(void)signal(SIGPIPE, signalHandler);
 
 	UStatus status;
 	UUri source = getUUri(0);
-	auto topic_time = getTimeUUri();
-	auto topic_random = getRandomUUri();
-	auto topic_counter = getCounterUUri();
+	const auto& topic_time = getTimeUUri();
+	const auto& topic_random = getRandomUUri();
+	const auto& topic_counter = getCounterUUri();
 	auto transport = std::make_shared<UTransportDomainSockets>(source);
 
-	auto resTime =
-	    Subscriber::subscribe(transport, std::move(topic_time), onReceiveTime);
-	auto resRandom = Subscriber::subscribe(transport, std::move(topic_random),
+	auto res_time =
+	uprotocol::communication::Subscriber::subscribe(transport, topic_time, onReceiveTime);
+	auto res_random = uprotocol::communication::Subscriber::subscribe(transport, topic_random,
 	                                       onReceiveRandom);
-	auto resCounter = Subscriber::subscribe(transport, std::move(topic_counter),
+	auto res_counter = uprotocol::communication::Subscriber::subscribe(transport, topic_counter,
 	                                        onReceiveCounter);
 
-	while (!gTerminate) {
+	while (!g_terminate) {
 		sleep(1);
 	}
 
 	return 0;
 }
+} // namespace uprotocol::v1
