@@ -44,7 +44,6 @@ private:
 	void listenThread();  // listen for incoming messages (thread)
 	void cleanupListener(CallableConn listener) override {}
 };  // class UTransportDomainSockets
-
 }  // namespace uprotocol::transport
 
 #endif  // UTRANSPORTDOMAINSOCKETS_H

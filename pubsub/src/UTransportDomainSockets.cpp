@@ -160,8 +160,7 @@ void UTransportDomainSockets::listenThread() {
 
 		connected = connect(
 		    fdSocket_, reinterpret_cast<struct sockaddr*>(&addr), data_len);
-		if (connect(fdSocket_, reinterpret_cast<struct sockaddr*>(&addr),
-		            data_len) == -1) {
+		if (connected == -1) {
 			spdlog::info("Client: Error on connect call.  Errno = {}", errno);
 			sleep(1);
 		} else {
