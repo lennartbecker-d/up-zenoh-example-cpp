@@ -26,13 +26,13 @@
 #include <uprotocol/v1/uri.pb.h>
 
 inline uprotocol::v1::UUri getRpcUUri(const int resource_id) {
-    constexpr uint32_t RPC_UE_ID = 0x10001;
-    uprotocol::v1::UUri uuri;
-    uuri.set_authority_name("test_rpc.app");
-    uuri.set_ue_id(RPC_UE_ID);
-    uuri.set_ue_version_major(1);
-    uuri.set_resource_id(resource_id);
-    return uuri;
+	constexpr uint32_t RPC_UE_ID = 0x10001;
+	uprotocol::v1::UUri uuri;
+	uuri.set_authority_name("test_rpc.app");
+	uuri.set_ue_id(RPC_UE_ID);
+	uuri.set_ue_version_major(1);
+	uuri.set_resource_id(resource_id);
+	return uuri;
 }
 
-#endif // COMMON_H
+#endif  // COMMON_H

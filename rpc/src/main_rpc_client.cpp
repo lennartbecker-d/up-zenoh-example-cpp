@@ -32,7 +32,10 @@
 #include "SocketUTransport.h"
 #include "common.h"
 
-using namespace uprotocol::v1;
+constexpr uint32_t METHOD_RPC_RESOURCE_ID = 12;
+constexpr std::chrono::milliseconds RPCCLIENT_TTL(500);
+
+namespace uprotocol::v1 {
 
 bool g_terminate = false;
 
@@ -75,7 +78,9 @@ void OnReceive(uprotocol::communication::RpcClient::MessageOrStatus expected) {
 	std::memcpy(pdata.data(), message.payload().data(), expected_size);
 	spdlog::info("Received payload: {} - {}, {}", pdata[0], pdata[1], pdata[2]);
 }
+}  // namespace uprotocol::v1
 
+using UPriority = uprotocol::v1::UPriority;
 /* The sample RPC client applications demonstrates how to send RPC requests and
  * wait for the response
  */
@@ -83,21 +88,19 @@ int main(int argc, char** argv) {
 	(void)argc;
 	(void)argv;
 
-	(void)signal(SIGINT, signalHandler);
+	(void)signal(SIGINT, uprotocol::v1::signalHandler);
 
-	UUri source = getRpcUUri(0);
-	UUri method = getRpcUUri(12);
+	uprotocol::v1::UUri source = getRpcUUri(0);
+	uprotocol::v1::UUri method = getRpcUUri(METHOD_RPC_RESOURCE_ID);
 	auto transport = std::make_shared<SocketUTransport>(source);
-	auto client =
-	    uprotocol::communication::RpcClient(transport, std::move(method), UPriority::UPRIORITY_CS4,
-	              std::chrono::milliseconds(500));
+	auto client = uprotocol::communication::RpcClient(
+	    transport, std::move(method), UPriority::UPRIORITY_CS4, RPCCLIENT_TTL);
 	uprotocol::communication::RpcClient::InvokeHandle handle;
 
-	while (!g_terminate) {
-		handle = client.invokeMethod(OnReceive);
+	while (!uprotocol::v1::g_terminate) {
+		handle = client.invokeMethod(uprotocol::v1::OnReceive);
 		sleep(1);
 	}
 
 	return 0;
 }
-

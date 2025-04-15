@@ -34,7 +34,9 @@
 #include "SocketUTransport.h"
 #include "common.h"
 
-using namespace uprotocol::v1;
+constexpr uint32_t METHOD_RPC_RESOURCE_ID = 12;
+
+namespace uprotocol::v1 {
 
 bool g_terminate = false;
 
@@ -65,23 +67,25 @@ std::optional<uprotocol::datamodel::builder::Payload> OnReceive(
 	// sequence number, current time, and random value
 	static uint64_t seq_num = 0;
 	std::random_device rd;
-    std::mt19937_64 gen(rd());
-    std::uniform_int_distribution<uint64_t> distribution(0, UINT64_MAX);
-    uint64_t rand_val = distribution(gen);
+	std::mt19937_64 gen(rd());
+	std::uniform_int_distribution<uint64_t> distribution(0, UINT64_MAX);
+	uint64_t rand_val = distribution(gen);
 	uint64_t time_val = std::chrono::duration_cast<std::chrono::milliseconds>(
-	                       std::chrono::system_clock::now().time_since_epoch())
-	                       .count();
+	                        std::chrono::system_clock::now().time_since_epoch())
+	                        .count();
 	std::vector<uint64_t> payload_data = {seq_num++, time_val, rand_val};
 
 	spdlog::debug("(Server) Received request:\n{}", message.DebugString());
 
-	uprotocol::datamodel::builder::Payload payload(reinterpret_cast<std::vector<uint8_t>&>(payload_data),
-	                UPayloadFormat::UPAYLOAD_FORMAT_RAW);
+	uprotocol::datamodel::builder::Payload payload(
+	    reinterpret_cast<std::vector<uint8_t>&>(payload_data),
+	    UPayloadFormat::UPAYLOAD_FORMAT_RAW);
 	spdlog::info("Sending payload:  {} - {}, {}", payload_data[0],
 	             payload_data[1], payload_data[2]);
 
 	return payload;
 }
+}  // namespace uprotocol::v1
 
 /* The sample RPC server applications demonstrates how to receive RPC requests
  * and send a response back to the client -
@@ -90,12 +94,13 @@ int main(int argc, char** argv) {
 	(void)argc;
 	(void)argv;
 
-	(void)signal(SIGINT, signalHandler);
+	(void)signal(SIGINT, uprotocol::v1::signalHandler);
 
-	UUri source = getRpcUUri(0);
-	UUri method = getRpcUUri(12);
+	uprotocol::v1::UUri source = getRpcUUri(0);
+	uprotocol::v1::UUri method = getRpcUUri(METHOD_RPC_RESOURCE_ID);
 	auto transport = std::make_shared<SocketUTransport>(source);
-	auto server = uprotocol::communication::RpcServer::create(transport, method, OnReceive);
+	auto server = uprotocol::communication::RpcServer::create(
+	    transport, method, uprotocol::v1::OnReceive);
 
 	if (!server.has_value()) {
 		spdlog::error("Failed to create RPC server: {}",
@@ -103,10 +108,9 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
-	while (!g_terminate) {
+	while (!uprotocol::v1::g_terminate) {
 		sleep(1);
 	}
 
 	return 0;
 }
-

@@ -33,7 +33,7 @@
 #include "UTransportDomainSockets.h"
 #include "common.h"
 
-using namespace uprotocol::v1;
+namespace uprotocol::v1 {
 
 bool g_terminate = false;
 
@@ -70,7 +70,9 @@ void onReceiveCounter(const uprotocol::v1::UMessage& message) {
 		spdlog::info("received counter = {}", payload);
 	}
 }
+}  // namespace uprotocol::v1
 
+using UStatus = uprotocol::v1::UStatus;
 /* The sample sub applications demonstrates how to consume data using uTransport
  * -
  * There are three topics that are received - random number, current time and a
@@ -79,24 +81,25 @@ int main(int argc, char** argv) {
 	(void)argc;
 	(void)argv;
 
-	(void)signal(SIGINT, signalHandler);
-	(void)signal(SIGPIPE, signalHandler);
+	(void)signal(SIGINT, uprotocol::v1::signalHandler);
+	(void)signal(SIGPIPE, uprotocol::v1::signalHandler);
 
 	UStatus status;
-	UUri source = getUUri(0);
+	uprotocol::v1::UUri source = getUUri(0);
 	const auto& topic_time = getTimeUUri();
 	const auto& topic_random = getRandomUUri();
 	const auto& topic_counter = getCounterUUri();
-	auto transport = std::make_shared<UTransportDomainSockets>(source);
+	auto transport =
+	    std::make_shared<uprotocol::transport::UTransportDomainSockets>(source);
 
-	auto res_time =
-	    uprotocol::communication::Subscriber::subscribe(transport, topic_time, onReceiveTime);
-	auto res_random = uprotocol::communication::Subscriber::subscribe(transport, topic_random,
-	                                       onReceiveRandom);
-	auto res_counter = uprotocol::communication::Subscriber::subscribe(transport, topic_counter,
-	                                        onReceiveCounter);
+	auto res_time = uprotocol::communication::Subscriber::subscribe(
+	    transport, topic_time, uprotocol::v1::onReceiveTime);
+	auto res_random = uprotocol::communication::Subscriber::subscribe(
+	    transport, topic_random, uprotocol::v1::onReceiveRandom);
+	auto res_counter = uprotocol::communication::Subscriber::subscribe(
+	    transport, topic_counter, uprotocol::v1::onReceiveCounter);
 
-	while (!g_terminate) {
+	while (!uprotocol::v1::g_terminate) {
 		sleep(1);
 	}
 
