@@ -25,41 +25,43 @@
 #include <unistd.h>
 #include <up-cpp/communication/Publisher.h>
 #include <up-cpp/datamodel/builder/Payload.h>
+#include <uprotocol/v1/ustatus.pb.h>
 
 #include <chrono>
 #include <csignal>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <random>
 
 #include "UTransportDomainSockets.h"
 #include "common.h"
 
-using namespace uprotocol::datamodel::builder;
-using namespace uprotocol::communication;
-using namespace uprotocol::v1;
+namespace uprotocol::v1 {
 
-bool gTerminate = false;
+bool g_terminate = false;
 
 void signalHandler(int signal) {
 	if (signal == SIGINT) {
 		std::cout << "Ctrl+C received. Exiting..." << std::endl;
-		gTerminate = true;
+		g_terminate = true;
 	}
 }
 
 int64_t getTime() {
-	auto currentTime = std::chrono::system_clock::now();
-	auto duration = currentTime.time_since_epoch();
-	int64_t timeMilli =
+	auto current_time = std::chrono::system_clock::now();
+	auto duration = current_time.time_since_epoch();
+	int64_t time_milli =
 	    std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
 
-	return timeMilli;
+	return time_milli;
 }
 
 int32_t getRandom() {
-	int32_t val = std::rand();
-	return val;
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_int_distribution<int32_t> distribution(0, INT32_MAX);
+	return distribution(gen);
 }
 
 uint8_t getCounter() {
@@ -67,7 +69,11 @@ uint8_t getCounter() {
 	++counter;
 	return counter;
 }
+}  // namespace uprotocol::v1
 
+using UStatus = uprotocol::v1::UStatus;
+using UPayloadFormat = uprotocol::v1::UPayloadFormat;
+using UCode = uprotocol::v1::UCode;
 /* The sample pub applications demonstrates how to send data using uTransport -
  * There are three topics that are published - random number, current time and a
  * counter */
@@ -75,8 +81,8 @@ int main(int argc, char** argv) {
 	(void)argc;
 	(void)argv;
 
-	signal(SIGINT, signalHandler);
-	signal(SIGPIPE, signalHandler);
+	(void)signal(SIGINT, uprotocol::v1::signalHandler);
+	(void)signal(SIGPIPE, uprotocol::v1::signalHandler);
 
 	UStatus status;
 
@@ -84,40 +90,44 @@ int main(int argc, char** argv) {
 	auto topic_time = getTimeUUri();
 	auto topic_random = getRandomUUri();
 	auto topic_counter = getCounterUUri();
-	auto transport = std::make_shared<UTransportDomainSockets>(source);
-	Publisher publish_time(transport, std::move(topic_time),
-	                       UPayloadFormat::UPAYLOAD_FORMAT_TEXT);
-	Publisher publish_random(transport, std::move(topic_random),
-	                         UPayloadFormat::UPAYLOAD_FORMAT_TEXT);
-	Publisher publish_counter(transport, std::move(topic_counter),
-	                          UPayloadFormat::UPAYLOAD_FORMAT_TEXT);
+	auto transport =
+	    std::make_shared<uprotocol::transport::UTransportDomainSockets>(source);
+	uprotocol::communication::Publisher publish_time(
+	    transport, std::move(topic_time),
+	    uprotocol::v1::UPayloadFormat::UPAYLOAD_FORMAT_TEXT);
+	uprotocol::communication::Publisher publish_random(
+	    transport, std::move(topic_random),
+	    UPayloadFormat::UPAYLOAD_FORMAT_TEXT);
+	uprotocol::communication::Publisher publish_counter(
+	    transport, std::move(topic_counter),
+	    UPayloadFormat::UPAYLOAD_FORMAT_TEXT);
 
-	while (!gTerminate) {
+	while (!uprotocol::v1::g_terminate) {
 		// send a string with a time value (ie "15665489")
-		uint64_t time_val = getTime();
+		uint64_t time_val = uprotocol::v1::getTime();
 		spdlog::info("sending time = {}", time_val);
-		Payload string_time(std::to_string(time_val),
-		                    UPayloadFormat::UPAYLOAD_FORMAT_TEXT);
+		uprotocol::datamodel::builder::Payload string_time(
+		    std::to_string(time_val), UPayloadFormat::UPAYLOAD_FORMAT_TEXT);
 		status = publish_time.publish(std::move(string_time));
 		if (status.code() != UCode::OK) {
 			spdlog::error("Publish time failed.");
 			break;
 		}
 
-		int32_t rand_val = getRandom();
+		int32_t rand_val = uprotocol::v1::getRandom();
 		spdlog::info("sending random = {}", rand_val);
-		Payload random_payload(std::to_string(rand_val),
-		                       UPayloadFormat::UPAYLOAD_FORMAT_TEXT);
+		uprotocol::datamodel::builder::Payload random_payload(
+		    std::to_string(rand_val), UPayloadFormat::UPAYLOAD_FORMAT_TEXT);
 		status = publish_random.publish(std::move(random_payload));
 		if (status.code() != UCode::OK) {
 			spdlog::error("Publish random failed.");
 			break;
 		}
 
-		uint8_t counter_val = getCounter();
+		uint8_t counter_val = uprotocol::v1::getCounter();
 		spdlog::info("sending counter = {}", counter_val);
-		Payload counter_payload(std::to_string(counter_val),
-		                        UPayloadFormat::UPAYLOAD_FORMAT_TEXT);
+		uprotocol::datamodel::builder::Payload counter_payload(
+		    std::to_string(counter_val), UPayloadFormat::UPAYLOAD_FORMAT_TEXT);
 		status = publish_counter.publish(std::move(counter_payload));
 		if (status.code() != UCode::OK) {
 			spdlog::error("Publish counter failed.");

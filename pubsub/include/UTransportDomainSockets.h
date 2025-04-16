@@ -9,20 +9,20 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#ifndef UTRANSPORT_DOMAIN_SOCKETS_H
-#define UTRANSPORT_DOMAIN_SOCKETS_H
+#ifndef UTRANSPORTDOMAINSOCKETS_H
+#define UTRANSPORTDOMAINSOCKETS_H
 
 #include <up-cpp/transport/UTransport.h>
 
 #include <filesystem>
 #include <thread>
 
-using namespace uprotocol;
+namespace uprotocol::transport {
 
-class UTransportDomainSockets : public transport::UTransport {
+class UTransportDomainSockets : public UTransport {
 public:
 	explicit UTransportDomainSockets(const v1::UUri& uuri);
-	virtual ~UTransportDomainSockets();
+	~UTransportDomainSockets() override;
 
 private:
 	int fdSocket_;  // socket handle
@@ -44,5 +44,6 @@ private:
 	void listenThread();  // listen for incoming messages (thread)
 	void cleanupListener(CallableConn listener) override {}
 };  // class UTransportDomainSockets
+}  // namespace uprotocol::transport
 
-#endif  // UTRANSPORT_DOMAIN_SOCKETS_H
+#endif  // UTRANSPORTDOMAINSOCKETS_H
