@@ -158,7 +158,7 @@ jobs:
   ci:
     name: CI status checks
     runs-on: ubuntu-latest
-    needs: build
+    needs: [lint]
     if: always()
     steps:
       - name: Check whether all jobs pass
